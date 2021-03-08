@@ -11,9 +11,8 @@ if __name__ == '__main__':
     job = app.CreateJobObject()
     sht = job.CreateSheetObject()
 
-    shts=job.GetAllSheetIds()
-#    print(shts[1][1])
-    for id in shts[1][1:]:
-        print(id)
+    shts = job.GetTreeSelectedSheetIds()
+#    for id in shts[1][1:]:
+#        print(id)
 #    app.PutMessage("Привет от Python!")
 
