@@ -16,3 +16,4 @@ if __name__ == '__main__':
     for id in shts[1][1:]:
         print(id)
 #    app.PutMessage("Привет от Python!")
+
