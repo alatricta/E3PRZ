@@ -96,7 +96,6 @@ if __name__ == '__main__':
     # по положению Х А что это мне даст ? А как потом мне
     # отсортировать по Y?
 
-
         for sym_ids in devices.values():
             # for sym_id in sym_ids[1:]:
             sort_dev = sorted(sym_ids[1:], key=lambda x: GetKeyForSort(x))
