@@ -4,14 +4,14 @@ import win32com.client as wcom
 
 
 def _GetSymOfDevOnSheets(job):
-    ''' Функция для получения списка id символов блоков на выделенных листах
-из передаваемого проекта Если нет ни одного выделенного листа в проекте,
-осуществляется выход из программы
+    '''
+    Функция для получения списка id символов блоков на выделенных листах
+    из передаваемого проекта Если нет ни одного выделенного листа в проекте,
+    осуществляется выход из программы
 
     job: проект передаваемый функции
     return: {
         id_листа_1: [
-            'наименование листа 1',
             id_символа_1,
             id_символа_2,
             ...
@@ -20,7 +20,7 @@ def _GetSymOfDevOnSheets(job):
             ...
             ]
         }
-        '''
+    '''
 
     # Получение количества и списка ID выделенных листов
     sht_count, sht_ids = job.GetTreeSelectedSheetIds()
@@ -48,14 +48,28 @@ def _GetSymOfDevOnSheets(job):
                         quit()
 
 
-def _GetKeyForSort(sym_id):
+def _GetKeyForSortSymbol(sym_id):
+    '''
+        Функция для получения ключа для сортировки символов.
+        Ключом берём кортеж координат X и Y левого нижнего угла символа.
+    '''
     sym.SetId(sym_id)
-    _, Xmin, Ymin, Xmax, Ymax = sym.GetPlacedArea()
-    sym_texts = sym.GetTextIds()[1][1:]
-    txt.SetId(sym_texts[0])
-    print(txt.GetText(), 'ID:', sym_id)
-    print(Xmin, Ymin, Xmax, Ymax)
+    _, Xmin, Ymin, _, _ = sym.GetPlacedArea()
+    # Debug code
+    # sym_texts = sym.GetTextIds()[1][1:]
+    # txt.SetId(sym_texts[0])
+    # print(txt.GetText(), 'ID:', sym_id)
+    # print(Xmin, Ymin)
     return (Xmin, Ymin)
+
+
+def _GetKeyFoSortSheet(sht_id):
+    '''
+        Функция для получения ключа для сортировки листов.
+        Ключом берём наименование листа.
+    '''
+    sht.SetId(sht_id)
+    return sht.GetName()
 
 
 # Основное тело программы
@@ -68,40 +82,13 @@ if __name__ == '__main__':
     dev = job.CreateDeviceObject()
     txt = job.CreateTextObject()
 
+    # TODO: 1. Получить структуру данных
+    # TODO: 2. Отсортировать структуру
+    # TODO: 3. Пройтись по элементам структуры и переименовать по порядку
+    # TODO: 4. Пройтись по элементам структуры и расставить надписи
+
     # Получаем список id всех символов на листах
     _GetSymOfDevOnSheets(job)
 
-    #     sym_texts = sym.GetTextIds()[1][1:]
-    #     for id_txt in sym_texts:
-    #         txt.SetId(id_txt)
-    #         print('ID текста:', id_txt, ' Текст: ', txt.GetText())
-    #     print('========================')
-
-    #     for id_txt in sym_texts:
-    #         txt.SetId(id_txt)
-    #         txt.SetText(f'{txt.GetText()}__')
-    #         print('ID текста:', id_txt, ' Новый текст: ', txt.GetText())
-    #     print('^^^^^^^^^^^^^^^^^^^^^^^^')
-    # print(sym_texts[0])
-    # _, Xmin, Ymin, Xmax, Ymax = sym.GetPlacedArea()
-    # print(Xmin, Ymin, Xmax, Ymax)
-    # devices[sym_id] = (coord[1:4], 0)
-
-    # Вывод текущего списка
-    # print(devices)
-    # Сортировка списка листов по названию
-    devices = {k: devices[k] for k in sorted(devices, key=lambda x: devices[x][0])}
-    # print(devices)
-    # TODO: можно попробовать отсортировать списки символов на листах
-    # по положению Х А что это мне даст ? А как потом мне
-    # отсортировать по Y?
-
-        for sym_ids in devices.values():
-            # for sym_id in sym_ids[1:]:
-            sort_dev = sorted(sym_ids[1:], key=lambda x: GetKeyForSort(x))
-            print('++++++++++++++')
-            print(sort_dev)
-            print('==============')
-
-        # Это обязательный параметр для закрытия COM-обекта
-        app.quit()
+    # Это обязательный параметр для закрытия COM-обекта
+    app.quit()
