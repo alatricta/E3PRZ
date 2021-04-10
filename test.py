@@ -1,94 +1,67 @@
 import win32com.client as wcom
+# Объявление глобальных переменных
+app = wcom.Dispatch('CT.Application')
+job = app.CreateJobObject()
+sht = job.CreateSheetObject()
+sym = job.CreateSymbolObject()
+dev = job.CreateDeviceObject()
+txt = job.CreateTextObject()
+
 
 # функции программы
+def _key(symbol_id: int) -> list:
+    ''' Функция получения ключа сортировки
 
+        Args:
+            symbol_id (int): id символа для получения ключа
 
-def _GetSymOfDevOnSheets(job):
+        Returns:
+            list: [Наименование_листа, координата_X, координата_Y]
     '''
-    Функция для получения списка id символов блоков на выделенных листах
-    из передаваемого проекта Если нет ни одного выделенного листа в проекте,
-    осуществляется выход из программы
+    # sym = job.CreateSymbolObject()
+    sym.SetId(symbol_id)
+    # value = sym.GetName()
+    shm_location = sym.GetSchemaLocation()
+    sht.SetId(shm_location[0])
+    value = [sht.GetName(), shm_location[1], shm_location[2]]
+    # print(value)
+    return value
 
-    job: проект передаваемый функции
-    return: {
-        id_листа_1: [
-            id_символа_1,
-            id_символа_2,
-            ...
-            ],
-        id_листа_2: [
-            ...
-            ]
-        }
+
+def _GetIdBlocksOnJob() -> list:
+    ''' Получение списка id блоков из проекта.
+        Список сортируется по положению на листе
     '''
+    # Получаем список символов блоков в проекте
+    symbols_ids = job.GetSymbolIds()
+    block_ids = []
+    # делаем новый список только с блоками
+    for id in symbols_ids[1][1:]:
+        sym.SetId(id)
+        if sym.IsBlock():
+            block_ids.append(id)
 
-    # Получение количества и списка ID выделенных листов
-    sht_count, sht_ids = job.GetTreeSelectedSheetIds()
-    # Проверяем что есть выделенные листы
-    if sht_count > 0:
-        # Генерируем словарь
-        devices = {k: [] for k in sht_ids[1:]}
-        # Перебор по всем листам
-        for sht_id in sht_ids[1:]:
-            sht.SetId(sht_id)
-            # Вначало добавляем имя листа, для сортировки
-            devices[sht_id].append(sht.GetName())
-            # Получаем количество и список id всех символов на листе
-            sym_count, sym_ids = sht.GetSymbolIds()
-            # проверяем что есть хотя бы один символ
-            if sym_count > 0:
-                # Перебор по всем символам
-                for sym_id in sym_ids[1:]:
-                    sym.SetId(sym_id)
-                    # Если символ является блоком, вносим его в список
-                    if sym.IsBlock():
-                        devices[sht_id].append(sym_id)
-                    else:
-                        print('Выделите хотя бы один лист.')
-                        quit()
-
-
-def _GetKeyForSortSymbol(sym_id):
-    '''
-        Функция для получения ключа для сортировки символов.
-        Ключом берём кортеж координат X и Y левого нижнего угла символа.
-    '''
-    sym.SetId(sym_id)
-    _, Xmin, Ymin, _, _ = sym.GetPlacedArea()
-    # Debug code
-    # sym_texts = sym.GetTextIds()[1][1:]
-    # txt.SetId(sym_texts[0])
-    # print(txt.GetText(), 'ID:', sym_id)
-    # print(Xmin, Ymin)
-    return (Xmin, Ymin)
-
-
-def _GetKeyFoSortSheet(sht_id):
-    '''
-        Функция для получения ключа для сортировки листов.
-        Ключом берём наименование листа.
-    '''
-    sht.SetId(sht_id)
-    return sht.GetName()
+    # сортируем по наименованию листа и положению на нём
+    block_ids.sort(key=_key)
+    return block_ids
 
 
 # Основное тело программы
-if __name__ == '__main__':
-    # Объявление переменных
-    app = wcom.Dispatch('CT.Application')
-    job = app.CreateJobObject()
-    sht = job.CreateSheetObject()
-    sym = job.CreateSymbolObject()
-    dev = job.CreateDeviceObject()
-    txt = job.CreateTextObject()
+block_ids = _GetIdBlocksOnJob()
+name_ids = []
+txts_ids = []
+for id in block_ids:
+    sym.SetId(id)
+    txts = sym.GetTextIds()
+    txt.SetId(txts[1][1])
+    name_ids.append(txt.GetText())
+    txts_ids.append(txts[1][1])
 
-    # TODO: 1. Получить структуру данных
-    # TODO: 2. Отсортировать структуру
-    # TODO: 3. Пройтись по элементам структуры и переименовать по порядку
-    # TODO: 4. Пройтись по элементам структуры и расставить надписи
+print(name_ids)
+print(txts_ids)
+print(job.GetDeviceNameSeparator())
 
-    # Получаем список id всех символов на листах
-    _GetSymOfDevOnSheets(job)
-
-    # Это обязательный параметр для закрытия COM-обекта
-    app.quit()
+# txt.SetId(25544)
+# txt.SetText('erq')
+# Это обязательный параметр для закрытия COM-обекта
+app.quit()

@@ -1,0 +1,12 @@
+/.idea/
+/__pycache__/
+/venv/
+.floo
+.flooignore
+# .gitignore
+*.e3s
+*.lck
+E3PRZ.*
+/Old_prog/
+lst.py
+Interop.e3.dll
