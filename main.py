@@ -133,44 +133,59 @@ def _GetList(dict_devices):
     return dev
 
 
-def _RenameList(list_devices, designation_label="А", designation_position=1):
+def _RenameList(list_devices: list, designation_label="А", designation_position=1):
     '''Переименование сортированного списка
 
         Args:
-            list_devices: список полученный после _GetList
+            list_devices (list): список полученный после _GetList
             designation_label (str, optional): Буквенная часть позиционного обозначения
             designation_position (int, optional): Начальная позиция
     '''
+    # проверяем что на входе и присваиваем id устройства
     for id in list_devices:
-        # проверяем что на входе и присваиваем id устройства
         if type(id) == tuple:
             dev.SetId(id[0])
             _RenameList(id[1], designation_label=f'{designation_label}{designation_position}-{designation_label}')
         elif type(id) == int:
             dev.SetId(id)
         else:
-            print('Прилетела какая-то непонятная фигня!')
+            print('Прилетела какая-то непонятная херня!')
+            continue
 
         dev.SetName(f'{designation_label}{designation_position}')
         designation_position += 1
 
 
-def _TextPlaycementDev(device_id):
+def _TextPlaycementDev(list_devices: list):
     '''Получаем id устройства переходим к символам и расставляем текст
 
-    Args:
-        device_id: Description
+        Args:
+            list_devices: список полученный после _GetList
     '''
-    pass
+    # проверяем что на входе и присваиваем id устройства
+    for id in list_devices:
+        if type(id) == tuple:
+            _TextPlaycementDev(id[1])
+        elif type(id) == int:
+            dev.SetId(id)
+        else:
+            print('Прилетела какая-то непонятная херня!')
+            continue
 
+        symbols_count, symbols_ids = dev.GetSymbolIds()
+        # проверяем наличие символов
+        if symbols_count == 0:
+            print('Нечего расставлять, Устройство не имеет изображений.')  # Debug info
+            continue
 
-def _TextPlaycementSym(symbol_id):
-    '''Получаем id символа и расставляем его тексты
-    
-    Args:
-        symbol_id (): Description
-    '''
-    pass
+        for symbol_id in symbols_ids[1:]:
+            sym.SetId(symbol_id)
+            # todo: надо получить символы соединителей и расставить текст у них
+            # получаем список ID текстов принадлежащих символу
+            texts_count, texts_ids = sym.GetTextIds()
+            for txt in texts_ids[1:]:
+                # todo: если тип текста = 212 (вроде бы) то надо его пристыковать к верхнему правому углу символа
+                Pass
 
 
 # # Основное тело программы
