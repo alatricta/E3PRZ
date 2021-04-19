@@ -183,9 +183,11 @@ def _TextPlaycementDev(list_devices: list):
             # todo: надо получить символы соединителей и расставить текст у них
             # получаем список ID текстов принадлежащих символу
             texts_count, texts_ids = sym.GetTextIds()
-            for txt in texts_ids[1:]:
-                # todo: если тип текста = 212 (вроде бы) то надо его пристыковать к верхнему правому углу символа
-                Pass
+            for txt_id in texts_ids[1:]:
+                # todo: если тип_ текста = 212 (вроде бы) то надо его пристыковать к верхнему правому углу символа
+                txt.SetId(txt_id)
+                txt.GetArea() # todo: получить координаты текста
+                format_txt = txt.GetFormat()
 
 
 # # Основное тело программы
