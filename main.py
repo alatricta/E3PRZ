@@ -7,27 +7,13 @@ sym = job.CreateSymbolObject()
 dev = job.CreateDeviceObject()
 txt = job.CreateTextObject()
 
+# Тип надписи позиционного обозначения, заданный в Е3
+txt_poz_type = 212
+# Шаг положения символов на листе, который учитывается при сортировке символов, в мм
+step_placement = 10
+
 
 # функции программы
-def _GetKeyForSortSymbols(symbol_id: int) -> tuple:
-    '''Функция получения ключа сортировки
-
-        Args:
-            symbol_id (int): id символа для получения ключа
-
-        Returns:
-            tuple: (Наименование_листа, координата_X, координата_Y)
-    '''
-    # sym = job.CreateSymbolObject()
-    sym.SetId(symbol_id)
-    # value = sym.GetName()
-    shm_location = sym.GetSchemaLocation()
-    sht.SetId(shm_location[0])
-    value = (sht.GetName(), shm_location[1], shm_location[2])
-    # print(value)
-    return value
-
-
 def _GetDevicesOnJob() -> dict:
     '''Получение словаря id устройств
 
@@ -73,22 +59,67 @@ def _GetDevicesOnJob() -> dict:
         return devices
 
 
+def _GetList(dict_devices):
+    dev = []
+    for id, devices in dict_devices.items():
+        if devices == 0:
+            # print(id)  # Debug info
+            dev.append(id)
+        else:
+            # print(id, devices)  # Debug info
+            ass = (id, devices)
+            dev.append(ass)
+    # print(dev)  # Debug info
+    return dev
+
+
+def _GetKeyForSortSymbols(symbol_id: int) -> tuple:
+    '''Функция получения ключа сортировки
+
+        Args:
+            symbol_id (int): id символа для получения ключа
+
+        Returns:
+            tuple: (Наименование_листа, координата_X, координата_Y)
+    '''
+    # проверяем что на входе и присваиваем id устройства
+    if type(symbol_id) == int:
+        sym.SetId(symbol_id)
+    elif symbol_id is None:
+        return ('!',)
+    else:
+        print('Прилетела какая-то непонятная херня!')
+        return None
+
+    # sym = job.CreateSymbolObject()
+
+    # value = sym.GetName()
+    sht_id, sym_X, sym_Y = sym.GetSchemaLocation()[0:3]
+    sht.SetId(sht_id)
+    value = (sht.GetName(), sym_X, sym_Y)
+    # print(value)
+    return value
+
+
 def _GetKeyForSortDevices(device_item) -> tuple:
     '''Получение ключа для сортировки устройств
 
         Args:
             device_item (): id устройства для сортировки
-        
+
         Returns:
             tuple: (Наименование_листа, координата_X, координата_Y)
     '''
     # проверяем что на входе и присваиваем id устройства
+    # если сборка
     if type(device_item) == tuple:
         dev.SetId(device_item[0])
+    # если устройство
     elif type(device_item) == int:
         dev.SetId(device_item)
+    # если не понятно что
     else:
-        print('Прилетела какая-то непонятная фигня!')
+        print('Прилетела какая-то непонятная херня!')
         return None
 
     # если это сборка
@@ -119,18 +150,86 @@ def _GetKeyForSortDevices(device_item) -> tuple:
             return _GetKeyForSortSymbols(symbols_ids[0])
 
 
-def _GetList(dict_devices):
-    dev = []
-    for id, devices in dict_devices.items():
-        if devices == 0:
-            # print(id)  # Debug info
-            dev.append(id)
+def _SortByPlacementWithStep(list_devices: list):
+    '''Сортировка списка устройств с учётом шага на схеме (выполнять после сортировки с ключом _GetKeyForSortDevices)
+
+        Args:
+            list_devices (list): сортированный список устройств
+    '''
+    def _GetDev(id):
+        '''Возвращает устройство в зависимости от переданного элемента'''
+        # если сборка
+        if type(id) == tuple:
+            return dev.SetId(id[1][0])
+        # если устройство
+        elif type(id) == int:
+            return dev.SetId(id)
+        # если не понятно что
         else:
-            # print(id, devices)  # Debug info
-            ass = (id, devices)
-            dev.append(ass)
-    # print(dev)  # Debug info
-    return dev
+            print('Прилетела какая-то непонятная херня!')
+            return None
+
+    # dev1 = job.CreateDeviceObject()
+    # dev2 = job.CreateDeviceObject()
+    for index1 in range(len(list_devices[0:-1])):
+        index2 = index1 + 1
+        # print("===============")  # Debug info
+        # print("Index1:", index1)  # Debug info
+        # print("Index2:", index2)  # Debug info
+        dev1_id = _GetDev(list_devices[index1])
+        dev2_id = _GetDev(list_devices[index2])
+
+        sort1 = _GetKeyForSortDevices(dev1_id)
+        sort2 = _GetKeyForSortDevices(dev2_id)
+        # print("Sort1:", sort1)  # Debug info
+        # print("Sort2:", sort2)  # Debug info
+
+        # если символы на одном листе
+        if sort1[0] == sort2[0]:
+            if sort1 == sort2:
+                continue
+            elif (sort1[1] + step_placement) > sort2[1]:
+                ''' Варианты расстановки символов
+                    Вариант 1
+                    г==========¬
+                    ¦   sym1   ¦
+                    ¦          ¦
+                    ¦          ¦
+                    L==========˩
+                    |<-sort1
+                    |   |
+                    |   |<-sort1+step
+                    |   |
+                    | |<-sort2
+                    | г==========¬
+                    | ¦   sym2   ¦
+                    | ¦          ¦
+                    | ¦          ¦
+                    | L==========˩
+
+                    Вариант 2
+                    | г==========¬
+                    | ¦   sym2   ¦
+                    | ¦          ¦
+                    | ¦          ¦
+                    | L==========˩
+                    | |<-sort2
+                    |   |
+                    |   |<-sort1+step
+                    |   |
+                    |<-sort1
+                    г==========¬
+                    ¦   sym1   ¦
+                    ¦          ¦
+                    ¦          ¦
+                    L==========˩
+                '''
+                # если вариант 1, то оставляем как есть
+                if sort1[2] > sort2[2]:
+                    continue
+                # если вариант 2, то меняем местами
+                else:
+                    list_devices[index1], list_devices[index2] = list_devices[index2], list_devices[index1]
 
 
 def _RenameList(list_devices: list, designation_label="А", designation_position=1):
@@ -143,11 +242,14 @@ def _RenameList(list_devices: list, designation_label="А", designation_position
     '''
     # проверяем что на входе и присваиваем id устройства
     for id in list_devices:
+        # если сборка
         if type(id) == tuple:
-            dev.SetId(id[0])
             _RenameList(id[1], designation_label=f'{designation_label}{designation_position}-{designation_label}')
+            dev.SetId(id[0])
+        # если устройство
         elif type(id) == int:
             dev.SetId(id)
+        # если не понятно что
         else:
             print('Прилетела какая-то непонятная херня!')
             continue
@@ -157,17 +259,21 @@ def _RenameList(list_devices: list, designation_label="А", designation_position
 
 
 def _TextPlaycementDev(list_devices: list):
-    '''Получаем id устройства переходим к символам и расставляем текст
+    '''Получаем список id устройств переходим к символам и расставляем текст
 
         Args:
             list_devices: список полученный после _GetList
     '''
     # проверяем что на входе и присваиваем id устройства
-    for id in list_devices:
-        if type(id) == tuple:
-            _TextPlaycementDev(id[1])
-        elif type(id) == int:
-            dev.SetId(id)
+    for dev_id in list_devices:
+        # если сборка
+        if type(dev_id) == tuple:
+            _TextPlaycementDev(dev_id[1])
+            continue
+        # если устройство
+        elif type(dev_id) == int:
+            dev.SetId(dev_id)
+        # если не понятно что
         else:
             print('Прилетела какая-то непонятная херня!')
             continue
@@ -175,19 +281,55 @@ def _TextPlaycementDev(list_devices: list):
         symbols_count, symbols_ids = dev.GetSymbolIds()
         # проверяем наличие символов
         if symbols_count == 0:
-            print('Нечего расставлять, Устройство не имеет изображений.')  # Debug info
+            # print('Нечего расставлять, Устройство не имеет изображений.')  # Debug info
             continue
 
-        for symbol_id in symbols_ids[1:]:
-            sym.SetId(symbol_id)
-            # todo: надо получить символы соединителей и расставить текст у них
-            # получаем список ID текстов принадлежащих символу
-            texts_count, texts_ids = sym.GetTextIds()
-            for txt_id in texts_ids[1:]:
-                # todo: если тип_ текста = 212 (вроде бы) то надо его пристыковать к верхнему правому углу символа
+        else:
+            # Сортируем список символов
+            symbols_ids = tuple(sorted(symbols_ids, key=_GetKeyForSortSymbols))
+
+            # Перебираем отсортированный список
+            for symbol_id in symbols_ids[1:]:
+                sym.SetId(symbol_id)
+                # Координаты верхней правой точки символа
+                sym_X_max, sym_Y_max = sym.GetPlacedArea()[3:]
+                # ID текста с типом Позиционного обозначения, заданного в Е3
+                txt_id = sym.GetTextIds(None, txt_poz_type)[1][1]
                 txt.SetId(txt_id)
-                txt.GetArea() # todo: получить координаты текста
-                format_txt = txt.GetFormat()
+
+                # Выравнивание по правому краю текста, чтобы не зависеть от длинны надписи
+                txt.SetAlignment(3)
+                # поворот позиционного обозначения всегда на 0
+                txt.SetRotation(0.0)
+                # цвет текста всегда черный
+                txt.SetColour(0)
+                # Координаты установки основного текста
+                txt_X, txt_Y = sym_X_max, sym_Y_max + 2
+
+                # если символов несколько, формируем доп текст и смещение основной надписи
+                if symbols_count > 1:
+                    att = job.CreateAttributeObject()
+                    att_id = sym.SetAttributeValue('saberParam1', f'.{symbols_ids.index(symbol_id)}')
+                    att.SetId(att_id)
+                    # Создание дополнительного текста и настройка его вида
+                    txt_att = job.CreateTextObject()
+                    txt_att_id = att.DisplayAttribute()
+                    txt_att.SetId(txt_att_id)
+                    txt_att.SetRotation(0.0)                    # поворот
+                    txt_att.SetStyle(txt.GetStyle())            # стиль
+                    txt_att.SetAlignment(1)                     # выравнивание влево
+                    txt_att.SetFontName(txt.GetFontName())      # наименования шрифта
+                    txt_att.SetHeight(txt.GetHeight())          # высоты шрифта
+                    txt_att.SetColour(txt.GetColour())          # цвета шрифта
+                    txt_att.SetVisibility(txt.GetVisibility())  # видимость текста
+                    # Задание координат Поз. обозначения с учётом доп.надписи
+                    txt_X -= txt_att.GetWidth()
+                    txt_att.SetSchemaLocation(txt_X, txt_Y)
+
+                # Устанавливаем позиционное обозначение вверх вправо (с учётомтом наличия доп текста)
+                txt.SetSchemaLocation(txt_X, txt_Y)
+        # todo: надо получить символы соединителей и расставить текст у них
+    # job.UpdateAllSymbols()
 
 
 # # Основное тело программы
@@ -196,12 +338,13 @@ if __name__ == '__main__':
     block_ids = _GetDevicesOnJob()
     block_ids = _GetList(block_ids)
 
-    print(f'Список  до  сортивровки:  {block_ids}')
+    # print(f'Список  до  сортивровки:    {block_ids}')  # Debug info
     block_ids.sort(key=_GetKeyForSortDevices)
-    print(f'Список после сортивровки: {block_ids}')
+    # print(f'Список после сортивровки:   {block_ids}')  # Debug info
+    _SortByPlacementWithStep(block_ids)
+    # print(f'Список после 2 сортивровки: {block_ids}')  # Debug info
     _RenameList(block_ids)
-    # dev.SetId(22922)
-    # print(dev.GetName())
+    _TextPlaycementDev(block_ids)
 
     # Это обязательный параметр для закрытия COM-обекта
     app.quit()
